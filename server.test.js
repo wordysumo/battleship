@@ -148,7 +148,14 @@ describe("server-side game testing", () => {
         })
     })
     describe("checkwin functionality", () => {
+
         it("detects player 1 win", () => {
+            const send = jest.fn()
+            const on = jest.fn()
+            const player_1 = {send, on}
+            const player_2 = {send, on}
+            battleship_game.add_player(player_1)
+            battleship_game.add_player(player_2)
             battleship_game.player_grid[0] = [[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0],[0,2,2,2,0,0,0,0]]
             expect(battleship_game.checkwin()).toBe(1)
         })

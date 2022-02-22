@@ -1,5 +1,6 @@
 import {useState, useEffect } from 'react'
 import { Grid } from './grid'
+import { GridSquare_1 } from './grid_square_phase_1'
 
 export const Phase1 = (props) => {
     
@@ -10,7 +11,7 @@ export const Phase1 = (props) => {
 
     return (
         <div className='phase_1'>
-        <Grid phase={1} playerNumber={props.playerNumber} server={props.server} />
+        <Grid square_component={GridSquare_1} playerNumber={props.playerNumber} server={props.server} />
         {props.placed > 0 && <div className='ships_section'>
         <div className='ship' draggable></div>
         </div>}

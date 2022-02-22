@@ -1,6 +1,13 @@
-import {useState, useEffect } from 'react'
+import {useState, useEffect, createContext } from 'react'
 import { Phase1 } from './phase_1';
 import { Phase2 } from './phase_2';
+export const playerNumberContext = createContext();
+export const serverContext = createContext();
+export const shipsContext = createContext();
+export const hitsReceivedContext = createContext();
+export const hitsSuccessContext = createContext();
+export const hitsMissedContext = createContext();
+export const turnContext = createContext();
 export const GameManger = () => {
     const [playerNumber, setPlayerNumber] = useState(-1);
     const [myTurn, setMyTurn] = useState(false)
@@ -17,8 +24,13 @@ export const GameManger = () => {
 
 
     useEffect(() => {
-        const wsClient = new WebSocket("ws://127.0.0.1:8999")
-        set_server(wsClient)
+        try {
+            const wsClient = new WebSocket("ws://127.0.0.1:8999")
+            set_server(wsClient)
+        } catch (error) {
+            set_disconnected(true);
+        }
+        
         
     },[])
     useEffect(() => {
@@ -75,29 +87,30 @@ export const GameManger = () => {
         
     },[server,ship_positions,place_ship_position, hit_positions,hit_successes,hit_fails,ships_placed])
     
-    const handle_ship_input_change = ({target}) => {
-        set_place_ship_position(target.value)
-    }
     return (
         <div className="App">
-        {disconnected && <h2>no connection</h2>}
-        My Player number is {playerNumber}
-        {myTurn && "it is my turn"}
-        current positions = {JSON.stringify(ship_positions)}
-        
-        
-        {game_phase === 1 && <Phase1 playerNumber={playerNumber} server={server} ship_position={place_ship_position} update_ship_position={handle_ship_input_change} placed={ships_placed} />}
-            
-            
-
-        {game_phase === 2 && <Phase2 playerNumber={playerNumber} server={server} turn={myTurn} ships={ship_positions} hits_received={hit_positions} hits_success={hit_successes} hits_fail={hit_fails} />}
-
-        {game_phase === 3 && <div>
-            {won && <h1>you have won</h1>}
-            {!won && <h1>you have lost</h1>}
-            </div>}
-
-
+        <playerNumberContext.Provider value={playerNumber}>
+            <serverContext.Provider value={server}>
+                <shipsContext.Provider value={ship_positions}>
+                    <hitsReceivedContext.Provider value={hit_positions}>
+                        <hitsSuccessContext.Provider value={hit_successes}>
+                            <hitsMissedContext.Provider value={hit_fails}>
+                                <turnContext.Provider value={myTurn}>
+                                {disconnected && <h2>no connection</h2>}
+                            {myTurn && "it is my turn"}
+                            {game_phase === 1 && <Phase1 placed={ships_placed} />}
+                            {game_phase === 2 && <Phase2 turn={myTurn} />}
+                            {game_phase === 3 && <div>
+                                {won && <h1>you have won</h1>}
+                                {!won && <h1>you have lost</h1>}
+                                </div>}
+                                </turnContext.Provider>
+                            </hitsMissedContext.Provider>
+                        </hitsSuccessContext.Provider>
+                    </hitsReceivedContext.Provider>
+                </shipsContext.Provider>
+            </serverContext.Provider>
+        </playerNumberContext.Provider>
         </div>
     );
 }

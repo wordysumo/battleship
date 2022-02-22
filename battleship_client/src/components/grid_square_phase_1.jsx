@@ -1,18 +1,20 @@
-import { useState } from "react";
-
+import { useState, useContext } from "react";
+import { serverContext, playerNumberContext } from "./game_manager";
 
 export const GridSquare_1 = (props) => {
+    const server = useContext(serverContext)
+    const playerNumber = useContext(playerNumberContext)
     const [ship_placed, set_ship_placed] = useState(false)
     const [hover, set_hover] = useState(false)
     const place_ship = () => {
         
         const message = {
             type: "PLACE_SHIP",
-            player_number : props.playerNumber,
+            player_number : playerNumber,
             value : [[props.x,props.y],[props.x,props.y]]
         }
         console.log(message)
-        props.server.send(JSON.stringify(message))
+        server.send(JSON.stringify(message))
     }
     const handle_drag_over = (e) => {
         e.preventDefault();
