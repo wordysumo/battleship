@@ -8,6 +8,7 @@ export const hitsReceivedContext = createContext();
 export const hitsSuccessContext = createContext();
 export const hitsMissedContext = createContext();
 export const turnContext = createContext();
+export const shipsPlacedContext = createContext();
 export const GameManger = () => {
     const [playerNumber, setPlayerNumber] = useState(-1);
     const [myTurn, setMyTurn] = useState(false)
@@ -16,20 +17,22 @@ export const GameManger = () => {
     const [server, set_server] = useState(false)
     const [place_ship_position, set_place_ship_position] = useState(false)
     const [disconnected, set_disconnected] = useState(false);
-    const [ships_placed, set_ships_placed] = useState(5)
+    const [ships_placed, set_ships_placed] = useState([5,3,3,1,1])
     const [hit_positions, set_hit_positions] = useState([])
     const [hit_successes, set_hit_successes] = useState([])
     const [hit_fails, set_hit_fails] = useState([])
     const [won, set_won] = useState(false);
-
+    const [host_key, set_host_key] = useState('test')
 
     useEffect(() => {
-        try {
-            const wsClient = new WebSocket("ws://127.0.0.1:8999")
-            set_server(wsClient)
-        } catch (error) {
+        
+        const wsClient = new WebSocket("ws://127.0.0.1:8999")
+        wsClient.onerror = (err) => {
+            console.log(err);
             set_disconnected(true);
         }
+        set_server(wsClient)
+        
         
         
     },[])
@@ -56,7 +59,9 @@ export const GameManger = () => {
             case "SHIP_PLACED":
                 console.log("ship confirmation received")
                 set_ship_positions([...ship_positions, data.value])
-                set_ships_placed(ships_placed - 1)
+                const ship_length = (data.value[1][0] - data.value[0][0]) + 1
+                const index = ships_placed.indexOf(ship_length)
+                set_ships_placed(prev_ships_placed => prev_ships_placed.slice(0,index).concat(prev_ships_placed.slice(index+1)))
                 break;
             case "RECEIVE_HIT":
                 console.log("hit data received received");
@@ -86,7 +91,27 @@ export const GameManger = () => {
         }
         
     },[server,ship_positions,place_ship_position, hit_positions,hit_successes,hit_fails,ships_placed])
-    
+    const join_public_game = () => {
+        const message = {
+            type: "PUBLIC_JOIN",
+            value: true
+        }
+        server.send(JSON.stringify(message));
+    }
+    const host_private_game = () => {
+        const message = {
+            type: 'PRIVATE_HOST',
+            value: host_key
+        }
+        server.send(JSON.stringify(message));
+    }
+    const join_private_game = () => {
+        const message = {
+            type: 'PRIVATE_JOIN',
+            value: host_key
+        }
+        server.send(JSON.stringify(message));
+    }
     return (
         <div className="App">
         <playerNumberContext.Provider value={playerNumber}>
@@ -96,14 +121,21 @@ export const GameManger = () => {
                         <hitsSuccessContext.Provider value={hit_successes}>
                             <hitsMissedContext.Provider value={hit_fails}>
                                 <turnContext.Provider value={myTurn}>
-                                {disconnected && <h2>no connection</h2>}
-                            {myTurn && "it is my turn"}
-                            {game_phase === 1 && <Phase1 placed={ships_placed} />}
-                            {game_phase === 2 && <Phase2 turn={myTurn} />}
-                            {game_phase === 3 && <div>
-                                {won && <h1>you have won</h1>}
-                                {!won && <h1>you have lost</h1>}
-                                </div>}
+                                    <shipsPlacedContext.Provider value={ships_placed}>
+                                        {disconnected && <h2>no connection</h2>}
+                                {myTurn && "it is my turn"}
+                                {game_phase === 0 && <div>
+                                    <button onClick={join_public_game}>Join public</button>
+                                    <button onClick={join_private_game}>Join private</button>
+                                    <button onClick={host_private_game}>Host private</button>
+                                    </div>}
+                                {game_phase === 1 && <Phase1 />}
+                                {game_phase === 2 && <Phase2 turn={myTurn} />}
+                                {game_phase === 3 && <div>
+                                    {won && <h1>you have won</h1>}
+                                    {!won && <h1>you have lost</h1>}
+                                    </div>}
+                                    </shipsPlacedContext.Provider>
                                 </turnContext.Provider>
                             </hitsMissedContext.Provider>
                         </hitsSuccessContext.Provider>

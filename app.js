@@ -15,6 +15,7 @@ const app = express();
 const server = http.createServer(app);
 const wsServer = new websocket.Server({ server });
 const games = [];
+const private_games = [];
 class game {
     constructor() {
         this.place_ship = (player, start, end) => {
@@ -47,6 +48,14 @@ class game {
             return hit;
         };
         this.check_valid_ship_placement = (player, start, end) => {
+            if (start[0] < 0 || start[0] > 7)
+                return false;
+            if (start[1] < 0 || start[1] > 7)
+                return false;
+            if (end[0] < 0 || end[0] > 7)
+                return false;
+            if (end[1] < 0 || end[1] > 7)
+                return false;
             for (let x = start[0]; x <= end[0]; x++) {
                 for (let y = start[1]; y <= end[1]; y++) {
                     if (this.player_grid[player][y][x] == 1) {
@@ -139,6 +148,12 @@ class game {
         this.players = [];
     }
 }
+class private_game extends game {
+    constructor(keyword) {
+        super();
+        this.keyword = keyword;
+    }
+}
 const send_message = (type, socket, value) => __awaiter(void 0, void 0, void 0, function* () {
     const message = {
         type,
@@ -148,19 +163,40 @@ const send_message = (type, socket, value) => __awaiter(void 0, void 0, void 0, 
 });
 wsServer.on('connection', (socket) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("connection");
-    if (games.length == 0) {
-        games.push(new game());
-        yield send_message("PLAYER_NUMBER", socket, 0);
-        games[0].add_player(socket);
-    }
-    else if (games[games.length - 1].players.length < 2) {
-        yield send_message("PLAYER_NUMBER", socket, 1);
-        games[games.length - 1].add_player(socket);
-    }
-    else {
-        games.push(new game());
-        yield send_message("PLAYER_NUMBER", socket, 0);
-        games[games.length - 1].add_player(socket);
-    }
+    socket.on('message', (data) => __awaiter(void 0, void 0, void 0, function* () {
+        const { type, value } = JSON.parse(data);
+        switch (type) {
+            case 'PRIVATE_HOST':
+                const session = new private_game(value);
+                private_games.push(session);
+                yield send_message("PLAYER_NUMBER", socket, 0);
+                session.add_player(socket);
+                break;
+            case 'PRIVATE_JOIN':
+                for (let game of private_games) {
+                    if (game.keyword === value && game.players.length < 2) {
+                        yield send_message("PLAYER_NUMBER", socket, 1);
+                        game.add_player(socket);
+                    }
+                }
+                break;
+            case 'PUBLIC_JOIN':
+                if (games.length == 0) {
+                    games.push(new game());
+                    yield send_message("PLAYER_NUMBER", socket, 0);
+                    games[0].add_player(socket);
+                }
+                else if (games[games.length - 1].players.length < 2) {
+                    yield send_message("PLAYER_NUMBER", socket, 1);
+                    games[games.length - 1].add_player(socket);
+                }
+                else {
+                    games.push(new game());
+                    yield send_message("PLAYER_NUMBER", socket, 0);
+                    games[games.length - 1].add_player(socket);
+                }
+                break;
+        }
+    }));
 }));
 module.exports = { game, server };

@@ -35,6 +35,7 @@
 
 .ship {
   background-color: red;
-  width: 60px;
+  border: 2px solid black;
+  width: 180px;
   height: 60px;
 }

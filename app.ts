@@ -7,8 +7,8 @@ const app = express()
 const server = http.createServer(app)
 
 const wsServer = new websocket.Server({server})
-const games : any = []
-
+const games : any[] = []
+const private_games : any[] = []
 
 class game {
     turn : number;
@@ -57,7 +57,11 @@ class game {
         return hit
         
     }
-    check_valid_ship_placement = (player : number, start : number[], end : number[]) => {
+    check_valid_ship_placement = (player : number, start : number[], end : number[]):boolean => {
+        if (start[0] < 0 || start[0] > 7) return false
+        if (start[1] < 0 || start[1] > 7) return false
+        if (end[0] < 0 || end[0] > 7) return false
+        if (end[1] < 0 || end[1] > 7) return false
         for(let x : number = start[0]; x <= end[0]; x++) {
             for (let y : number = start[1]; y<= end[1]; y++) {
                 if (this.player_grid[player][y][x] == 1) {
@@ -68,11 +72,11 @@ class game {
         return true;
     }
 
-    swap_turns = () => {
+    swap_turns = ():void => {
         this.turn == 1 ? this.turn = 0 : this.turn = 1
         send_message("TURN_SWITCH",this.players[this.turn],true)
     }
-    checkwin = () => {
+    checkwin = ():number => {
         let player_1_loss : boolean = true;
         let player_2_loss : boolean = true
         for (let i : number = 0; i< 8; i++) {
@@ -98,7 +102,7 @@ class game {
         return -1;
 
     }
-    add_player = (socket : any) => {
+    add_player = (socket : any):void => {
         this.players.push(socket);
         if (this.players.length == 2) {
             this.begin_phase_1();
@@ -146,6 +150,13 @@ class game {
     }
 
 }
+class private_game extends game {
+    keyword: string;
+    constructor(keyword : string) {
+        super();
+        this.keyword= keyword
+    }
+}
 
 const send_message = async (type: string, socket : any, value : any) => {
     const message : object = {
@@ -157,22 +168,44 @@ const send_message = async (type: string, socket : any, value : any) => {
 
 wsServer.on('connection',async (socket : any) => {
     console.log("connection")
-    if (games.length == 0) {
-        games.push(new game());
-        await send_message("PLAYER_NUMBER",socket,0)
-        games[0].add_player(socket);
-        
-    }
-    else if (games[games.length - 1].players.length < 2) {
-        await send_message("PLAYER_NUMBER",socket,1)
-        games[games.length - 1].add_player(socket)
-        
-    } else {
-        games.push(new game());
-        await send_message("PLAYER_NUMBER",socket,0)
-        games[games.length - 1].add_player(socket);
-        
-    }
+    socket.on('message', async (data : any) => {
+        const {type, value} = JSON.parse(data);
+        switch (type) {
+            case 'PRIVATE_HOST':
+                const session = new private_game(value);
+                private_games.push(session);
+                await send_message("PLAYER_NUMBER",socket,0)
+                session.add_player(socket)
+                break;
+            case 'PRIVATE_JOIN':
+                for (let game of private_games) {
+                    if (game.keyword === value && game.players.length < 2) {
+                        await send_message("PLAYER_NUMBER",socket,1)
+                        game.add_player(socket)
+                    }
+                }
+                break;
+            case 'PUBLIC_JOIN':
+                if (games.length == 0) {
+                    games.push(new game());
+                    await send_message("PLAYER_NUMBER",socket,0)
+                    games[0].add_player(socket);
+                    
+                }
+                else if (games[games.length - 1].players.length < 2) {
+                    await send_message("PLAYER_NUMBER",socket,1)
+                    games[games.length - 1].add_player(socket)
+                    
+                } else {
+                    games.push(new game());
+                    await send_message("PLAYER_NUMBER",socket,0)
+                    games[games.length - 1].add_player(socket);
+                    
+                }
+                break;
+        }
+    })
+    
     
 })
 

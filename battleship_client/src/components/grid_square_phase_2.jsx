@@ -50,7 +50,7 @@ export const GridSquare_2 = (props) => {
             }
         }
         for (let ship of ships) {
-            if (ship[0][0] === props.x && ship[0][1] === props.y) {
+            if (props.x >= ship[0][0] && props.x <= ship[1][0] && props.y >= ship[0][1] && props.y <= ship[1][1]) {
                 return (
                     <div className="grid_square active" />
                 )
